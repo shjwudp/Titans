@@ -99,10 +99,10 @@ class GPT(nn.Module):
         # word_embeeding_weight=self.embed.word_embedding_weight,
             dtype=dtype)
 
-    def forward(self, input_ids, attention_mask=None):
+    def forward(self, input_ids, position_ids=None, attention_mask=None):
 
         # the size of input_ids is (BATCH_SIZE, SEQ_LEN)
-        x = self.embed(input_ids)
+        x = self.embed(input_ids, position_ids)
         # the size of x after embed layer is (BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE)
 
         # We create a 3D attention mask from a 2D tensor mask.
