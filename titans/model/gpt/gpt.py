@@ -21,6 +21,24 @@ from titans.decorator import no_support
 __all__ = ['GPT', 'GPTLMLoss', 'gpt2_small', 'gpt2_medium', 'gpt2_large', 'gpt2_xl', 'gpt2_8B', 'gpt3']
 
 
+def init_method_normal(sigma):
+    """Init method based on N(0, sigma)."""
+    def init_(tensor, fan_in, fan_out):
+        return torch.nn.init.normal_(tensor, mean=0.0, std=sigma)
+
+    return init_
+
+
+def scaled_init_method_normal(sigma, num_layers):
+    """Init method based on N(0, sigma/sqrt(2*num_layers)."""
+    std = sigma / math.sqrt(2.0 * num_layers)
+
+    def init_(tensor, fan_in, fan_out):
+        return torch.nn.init.normal_(tensor, mean=0.0, std=std)
+
+    return init_
+
+
 @no_support(['sp', 'moe'])
 class GPT(nn.Module):
     """
@@ -66,13 +84,17 @@ class GPT(nn.Module):
                  apply_post_layernorm: bool = False,
                  fuse_scale_mask_softmax: bool = False,
                  checkpoint: bool = False,
-                 activation_offload: bool = False) -> None:
+                 activation_offload: bool = False,
+                 initializer_range: float = 1.0) -> None:
         super().__init__()
+        init_method = init_method_normal(initializer_range)
+        scaled_init_method = scaled_init_method_normal(initializer_range, depth)
         self.embed = GPTEmbedding(embedding_dim=hidden_size,
                                   vocab_size=vocab_size,
                                   max_position_embeddings=max_position_embeddings,
                                   padding_idx=padding_idx,
                                   dropout=embedding_dropout,
+                                  init_method=init_method,
                                   dtype=dtype)
         self.blocks = nn.ModuleList([
             GPTBlock(hidden_size=hidden_size,
@@ -87,7 +109,9 @@ class GPT(nn.Module):
                      apply_post_layernorm=apply_post_layernorm,
                      fuse_scale_mask_softmax=fuse_scale_mask_softmax,
                      checkpoint=checkpoint,
-                     activation_offload=activation_offload) for _ in range(depth)
+                     activation_offload=activation_offload,
+                     init_method=init_method,
+                     scaled_init_method=scaled_init_method) for _ in range(depth)
         ])
 
         self.norm = col_nn.LayerNorm(normalized_shape=hidden_size, eps=layernorm_epsilon, dtype=dtype)

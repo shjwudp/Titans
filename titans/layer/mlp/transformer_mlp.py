@@ -26,13 +26,15 @@ class TransformerMLP(nn.Module):
                  activation: Callable = None,
                  dropout_prob: float = 0.0,
                  dtype: dtype = None,
-                 bias: bool = True):
+                 bias: bool = True,
+                 init_method: Callable = None,
+                 scaled_init_method: Callable = None):
         super().__init__()
         intermediate_dim = int(hidden_size * mlp_ratio)
 
         # int linear layers
-        self.linear_1 = col_nn.Linear(hidden_size, intermediate_dim, dtype=dtype, bias=bias)
-        self.linear_2 = col_nn.Linear(intermediate_dim, hidden_size, dtype=dtype, bias=bias)
+        self.linear_1 = col_nn.Linear(hidden_size, intermediate_dim, dtype=dtype, bias=bias, weight_initializer=init_method)
+        self.linear_2 = col_nn.Linear(intermediate_dim, hidden_size, dtype=dtype, bias=bias, weight_initializer=scaled_init_method)
 
         # int activation function
         if activation:

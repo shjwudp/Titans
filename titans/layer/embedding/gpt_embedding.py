@@ -1,5 +1,6 @@
 import torch
 from torch import dtype, nn
+from typing import Callable
 
 from colossalai import nn as col_nn
 from colossalai.utils import get_current_device
@@ -14,12 +15,13 @@ class GPTEmbedding(nn.Module):
                  num_tokentypes: int = 0,
                  padding_idx: int = None,
                  dropout: float = 0.,
-                 dtype: dtype = None) -> None:
+                 dtype: dtype = None,
+                 init_method: Callable = None) -> None:
         super().__init__()
-        self.word_embeddings = col_nn.Embedding(vocab_size, embedding_dim, padding_idx=padding_idx, dtype=dtype)
-        self.position_embeddings = col_nn.Embedding(max_position_embeddings, embedding_dim, dtype=dtype)
+        self.word_embeddings = col_nn.Embedding(vocab_size, embedding_dim, padding_idx=padding_idx, dtype=dtype, weight_initializer=init_method)
+        self.position_embeddings = col_nn.Embedding(max_position_embeddings, embedding_dim, dtype=dtype, weight_initializer=init_method)
         if num_tokentypes > 0:
-            self.tokentype_embeddings = col_nn.Embedding(num_tokentypes, embedding_dim, dtype=dtype)
+            self.tokentype_embeddings = col_nn.Embedding(num_tokentypes, embedding_dim, dtype=dtype, weight_initializer=init_method)
         else:
             self.tokentype_embeddings = None
         self.dropout = col_nn.Dropout(dropout)

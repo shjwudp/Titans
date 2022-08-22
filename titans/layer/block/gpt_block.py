@@ -28,7 +28,9 @@ class GPTBlock(CheckpointModule):
                  apply_post_layernorm: bool = False,
                  fuse_scale_mask_softmax: bool = False,
                  checkpoint: bool = False,
-                 activation_offload: bool = False):
+                 activation_offload: bool = False,
+                 init_method: Callable = None,
+                 scaled_init_method: Callable = None):
         super().__init__(checkpoint, activation_offload)
         self.apply_post_layernorm = apply_post_layernorm
         self.norm1 = col_nn.LayerNorm(normalized_shape=hidden_size, eps=layernorm_epsilon, dtype=dtype)
@@ -38,14 +40,18 @@ class GPTBlock(CheckpointModule):
                                      dropout=dropout,
                                      bias=bias,
                                      fuse_scale_mask_softmax=fuse_scale_mask_softmax,
-                                     dtype=dtype)
+                                     dtype=dtype,
+                                     init_method=init_method,
+                                     scaled_init_method=scaled_init_method)
         self.norm2 = col_nn.LayerNorm(normalized_shape=hidden_size, eps=layernorm_epsilon, dtype=dtype)
         self.mlp = TransformerMLP(hidden_size=hidden_size,
                                   mlp_ratio=mlp_ratio,
                                   activation=activation,
                                   dropout_prob=dropout,
                                   dtype=dtype,
-                                  bias=bias)
+                                  bias=bias,
+                                  init_method=init_method,
+                                  scaled_init_method=scaled_init_method)
 
     def _forward(self, x, attention_mask=None):
         if attention_mask is not None and attention_mask.dtype != x.dtype:
@@ -64,7 +70,7 @@ class GPTBlock(CheckpointModule):
             residual = x
         x = residual + self.mlp(x)
 
-        return x, attention_mask
+        return x
 
 
 class MOEGPTBlock(CheckpointModule):

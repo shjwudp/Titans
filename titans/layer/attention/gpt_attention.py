@@ -2,6 +2,7 @@ import math
 
 import torch
 from torch import dtype, nn
+from typing import Callable
 
 from colossalai import nn as col_nn
 from colossalai.nn.layer.utils import divide
@@ -19,11 +20,13 @@ class GPTSelfAttention(nn.Module):
                  dropout: float,
                  bias: bool = True,
                  fuse_scale_mask_softmax: bool = False,
-                 dtype: dtype = None) -> None:
+                 dtype: dtype = None,
+                 init_method: Callable = None,
+                 scaled_init_method: Callable = None) -> None:
         super().__init__()
         self.fuse_scale_mask_softmax = fuse_scale_mask_softmax
         self.attention_head_size = divide(hidden_size, num_heads)
-        self.query_key_value = col_nn.Linear(hidden_size, 3 * hidden_size, dtype=dtype, bias=bias)
+        self.query_key_value = col_nn.Linear(hidden_size, 3 * hidden_size, dtype=dtype, bias=bias, weight_initializer=init_method)
         if fuse_scale_mask_softmax:
             from colossalai.kernel import FusedScaleMaskSoftmax
             from colossalai.kernel.cuda_native.scaled_softmax import \
@@ -38,7 +41,7 @@ class GPTSelfAttention(nn.Module):
         else:
             self.softmax = nn.Softmax(dim=-1)
         self.attention_dropout = col_nn.Dropout(attention_dropout)
-        self.dense = col_nn.Linear(hidden_size, hidden_size, dtype=dtype, bias=True)
+        self.dense = col_nn.Linear(hidden_size, hidden_size, dtype=dtype, bias=True, weight_initializer=scaled_init_method)
         self.dropout = col_nn.Dropout(dropout)
 
     def forward(self, x, attention_mask=None):
